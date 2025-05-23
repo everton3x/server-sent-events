@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Server-sent events demo</title>
+</head>
+
+<body>
+
+    <label for="max-steps">Max steps: </label>
+    <input type="number" id="max-steps" min="5" step="1" value="5" required autofocus>
+    <button type="button" id="btn-start">Start</button>
+    <button type="button" id="btn-stop">Stop</button>
+
+    <br>
+
+    <progress id="progress-bar" max="5" value="0"></progress>
+    <output id="progress-out"></output>
+
+
+    <script>
+        // Seleciona elementos DOM necessários
+        const max = document.getElementById('max-steps');
+        const btnStart = document.getElementById('btn-start');
+        const btnStop = document.getElementById('btn-stop');
+        const progressBar = document.getElementById('progress-bar');
+        const progressOutput = document.getElementById('progress-out');
+        var evtSource = null; // Armazenará a conexão SSE
+
+        // Configura o clique do botão Iniciar
+        btnStart.onclick = function () {
+            console.clear();
+            // Cria uma nova conexão SSE com o parâmetro max
+            evtSource = new EventSource('sse.php?max=' + max.value);
+
+            // Evento quando a conexão é aberta
+            evtSource.onopen = function () {
+                progressBar.value = 0; // Reseta a barra de progresso
+                progressBar.max = max.value; // Atualiza o máximo de passos
+                progressOutput.innerHTML = ''; // Limpa a saída
+            };
+
+            // Evento quando recebe mensagem do servidor
+            evtSource.onmessage = function (e) {
+                let data = JSON.parse(e.data); // Converte os dados recebidos
+                console.log(data);
+
+                // Atualiza a interface do usuário
+                progressBar.value = data.step;
+                progressOutput.innerHTML = data.message;
+
+                // Verifica se o processo foi finalizado
+                if (data.done == true) {
+                    console.warn(data.message);
+                    evtSource.close(); // Fecha a conexão
+                }
+            };
+
+            // Evento em caso de erro na conexão
+            evtSource.onerror = function (e) {
+                console.error(e);
+                evtSource.close(); // Fecha a conexão
+                console.warn('Processo abortado!');
+            };
+
+            // Logs informativos para depuração
+            console.warn("Conexão com o servidor aberta.");
+            console.info(evtSource.withCredentials); // Mostra credenciais
+            console.info(evtSource.readyState); // Estado da conexão (0-2)
+            console.info(evtSource.url); // URL da conexão
+        };
+
+        // Configura o clique do botão Parar
+        btnStop.onclick = function () {
+            console.warn('Processo interrompido pelo usuário!');
+            if (evtSource) {
+                evtSource.close(); // Encerra a conexão SSE
+            }
+        };
+    </script>
+</body>
+
+</html>
